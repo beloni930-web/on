@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>Firebase 커뮤니티 — 실시간 공유</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      --bg:#f6f8fb;--panel:#ffffff;--text:#222;--muted:#8a94a6;
+      --primary:#6c63ff;--accent:#ff6584;--radius:14px;
+    }
+    [data-theme="dark"]{
+      --bg:#171826;--panel:#232439;--text:#f5f5f7;--muted:#a8aec0;
+      --primary:#7c76ff;--accent:#ff6a8a;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto;
+      background:var(--bg);color:var(--text);transition:background .25s,color .25s}
+    header{position:sticky;top:0;z-index:40;background:var(--panel);box-shadow:0 2px 10px rgba(0,0,0,.08);
+      padding:12px 18px;display:flex;gap:12px;align-items:center;justify-content:space-between}
+    .brand{display:flex;align-items:center;gap:10px}
+    .logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--primary),var(--accent))}
+    h1{font-size:18px;margin:0}
+    .header-right{display:flex;align-items:center;gap:10px}
+    .btn{border:none;border-radius:12px;padding:8px 12px;font-size:13px;cursor:pointer}
+    .btn.primary{background:var(--primary);color:#fff}
+    .btn.ghost{background:transparent;border:1px solid #d6d6e7;color:var(--text)}
+    .user-chip{display:flex;align-items:center;gap:8px;background:rgba(108,99,255,.12);color:var(--primary);border-radius:999px;padding:6px 10px}
+    .avatar-chip{width:22px;height:22px;border-radius:50%;background:#c7c7d7;background-size:cover;background-position:center}
+    .layout{display:grid;grid-template-columns:220px 1fr 280px;gap:18px;max-width:1200px;margin:18px auto;padding:0 18px}
+    .panel{background:var(--panel);border-radius:var(--radius);box-shadow:0 2px 8px rgba(0,0,0,.06);padding:18px}
+    textarea,input[type="text"],input[type="password"],input[type="email"]{width:100%;padding:12px;border:1px solid #d6d6e7;border-radius:12px;background:transparent;color:var(--text)}
+    .post{border:1px solid rgba(0,0,0,.06);border-radius:14px;padding:14px;margin-top:14px}
+    .post-head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+    .meta{color:var(--muted);font-size:12px}
+    .actions{display:flex;gap:10px;margin-top:10px}
+    .action{border:none;background:transparent;color:var(--primary);cursor:pointer}
+    .counts{margin-top:6px;color:var(--muted);font-size:12px}
+    .right h3{margin:0 0 10px}
+    .pill{display:inline-block;padding:6px 10px;border-radius:999px;background:rgba(0,0,0,.06);margin:4px 6px 0 0;font-size:12px}
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:60}
+    .card{width:380px;max-width:92vw}
+    .chat{position:fixed;right:18px;bottom:0;width:320px;background:var(--panel);border-radius:16px 16px 0 0;box-shadow:0 -6px 18px rgba(0,0,0,.15);transform:translateY(85%);transition:transform .25s;z-index:54}
+    .chat.open{transform:translateY(0)}
+    .chat-head{background:var(--primary);color:#fff;padding:10px 14px;border-radius:16px 16px 0 0;cursor:pointer}
+    .chat-body{padding:12px;height:220px;overflow:auto}
+    .chat-input{display:flex;border-top:1px solid rgba(0,0,0,.1)}
+    .chat-input input{border:none;padding:12px;flex:1}
+    .chat-input button{border:none;background:var(--primary);color:#fff;padding:0 16px;cursor:pointer}
+    .xp-row{display:flex;align-items:center;gap:8px}
+    .bar{flex:1;height:8px;border-radius:999px;background:rgba(0,0,0,.08);overflow:hidden}
+    .fill{height:100%;background:linear-gradient(90deg,var(--primary),var(--accent));width:0%}
+    .badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    .badge-tile{background:rgba(0,0,0,.06);padding:6px 10px;border-radius:10px;font-size:12px}
+    .notice{position:fixed;left:50%;top:18px;transform:translateX(-50%);background:var(--panel);color:var(--text);
+      border:1px solid rgba(0,0,0,.08);padding:10px 14px;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.15);display:none;z-index:70}
+    .post-image{margin-top:10px;border-radius:12px;max-width:100%;display:block}
+    .avatar-lg{width:64px;height:64px;border-radius:50%;background:#c7c7d7;background-size:cover;background-position:center}
+    .preview{margin-top:8px;font-size:12px;color:var(--muted)}
+  </style>
+</head>
+<body data-theme="light">
+  <header>
+    <div class="brand">
+      <div class="logo"></div><h1>Firebase 커뮤니티</h1>
+    </div>
+    <div class="header-right" id="authArea">
+      <button class="btn ghost" onclick="openModal('login')">로그인</button>
+      <button class="btn primary" onclick="openModal('signup')">회원가입</button>
+      <button class="btn ghost" onclick="toggleTheme()">🌙/☀️</button>
+    </div>
+    <div class="header-right" id="userArea" style="display:none;">
+      <div class="user-chip">
+        <div id="chipAvatar" class="avatar-chip"></div>
+        <span id="chipNick">-</span> · LV <span id="chipLv">1</span>
+      </div>
+      <button class="btn ghost" onclick="router.show('profile')">프로필</button>
+      <button class="btn primary" onclick="logout()">로그아웃</button>
+      <button class="btn ghost" onclick="toggleTheme()">🌙/☀️</button>
+    </div>
+  </header>
+
+  <div class="layout" id="pageFeed">
+    <aside class="panel">
+      <ul style="list-style:none;padding:0;margin:0">
+        <li style="padding:8px 0;cursor:pointer" onclick="router.show('feed')">🏠 홈</li>
+<li style="padding:8px 0;cursor:pointer" onclick="router.show('hot')">🔥 인기글</li>
+        <li style="padding:8px 0;cursor:pointer" onclick="router.show('profile')">🧑 내 프로필</li>
+      </ul>
+    </aside>
+
+    <main>
+      <div class="panel">
+        <h3 style="margin-top:0">글쓰기</h3>
+        <textarea id="composer" placeholder="무슨 생각을 하고 계신가요? (로그인 필요)"></textarea>
+        <div style="display:flex;gap:10px;margin-top:10px;align-items:center">
+          <input id="postImage" type="file" accept="image/*" />
+          <button class="btn primary" onclick="addPost()">등록</button>
+        </div>
+        <div id="postImagePreview" class="preview"></div>
+      </div>
+      <div id="posts"></div>
+    </main>
+
+    <aside class="panel right">
+      <h3>실시간 트렌드</h3>
+      <div>
+        <span class="pill">#Firebase</span>
+        <span class="pill">#실시간</span>
+        <span class="pill">#커뮤니티</span>
+      </div>
+      <div style="margin-top:16px">
+        <h3>Tips</h3>
+        <div class="meta">로그인하면 글/댓글/좋아요 가능</div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- PROFILE -->
+  <div class="layout" id="pageProfile" style="display:none;">
+    <aside class="panel">
+      <ul style="list-style:none;padding:0;margin:0">
+        <li style="padding:8px 0;cursor:pointer" onclick="router.show('feed')">⬅ 피드로 돌아가기</li>
+      </ul>
+    </aside>
+    <main>
+      <div class="panel">
+        <h3 style="margin-top:0">내 프로필</h3>
+        <div style="display:flex;align-items:center;gap:14px">
+          <div id="profAvatar" class="avatar-lg"></div>
+          <div>
+            <div style="font-weight:700;font-size:18px" id="profNick">-</div>
+            <div class="meta" id="profEmail">@</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:10px;align-items:center">
+          <input id="avatarInput" type="file" accept="image/*" />
+          <button class="btn ghost" onclick="uploadAvatar()">프로필 사진 업로드</button>
+        </div>
+        <div style="margin-top:12px" class="xp-row">
+          <strong>LV <span id="profLv">1</span></strong>
+          <div class="bar"><div class="fill" id="xpFill"></div></div>
+          <span id="xpText">0/100</span>
+        </div>
+        <div class="badges" id="badges"></div>
+      </div>
+
+      <div class="panel">
+        <h3 style="margin:0 0 10px">내가 쓴 글</h3>
+        <div id="myPosts"></div>
+      </div>
+    </main>
+    <aside class="panel right"></aside>
+  </div>
+
+  <!-- 댓글 모달 -->
+  <div class="modal" id="commentModal">
+    <div class="panel card">
+      <h3 style="margin-top:0">댓글</h3>
+      <div id="commentList" style="max-height:260px;overflow:auto;margin-bottom:8px"></div>
+      <input id="commentInput" placeholder="댓글을 입력하세요 (로그인 필요)" onkeypress="if(event.key==='Enter') addComment()" />
+      <div style="display:flex;gap:8px;margin-top:10px;justify-content:flex-end">
+        <button class="btn primary" onclick="addComment()">등록</button>
+        <button class="btn ghost" onclick="closeModal()">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 로그인/회원가입 모달 -->
+  <div class="modal" id="loginModal">
+    <div class="panel card">
+      <h3 style="margin-top:0">로그인</h3>
+      <input id="loginEmail" type="email" placeholder="이메일" />
+      <input id="loginPw" type="password" placeholder="비밀번호" />
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn primary" onclick="login()">로그인</button>
+        <button class="btn ghost" onclick="openModal('signup')">회원가입으로</button>
+        <button class="btn ghost" onclick="closeModal()">닫기</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal" id="signupModal">
+    <div class="panel card">
+      <h3 style="margin-top:0">회원가입</h3>
+      <input id="suEmail" type="email" placeholder="이메일" />
+      <input id="suPw" type="password" placeholder="비밀번호" />
+      <input id="suNick" placeholder="별명(닉네임)" />
+      <div class="meta">※ 닉네임은 프로필에 저장됩니다.</div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn primary" onclick="signup()">가입하기</button>
+        <button class="btn ghost" onclick="openModal('login')">로그인으로</button>
+        <button class="btn ghost" onclick="closeModal()">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 채팅(데모: 로컬 UI) -->
+  <div class="chat" id="chat">
+    <div class="chat-head" onclick="toggleChat()">💬 커뮤니티 채팅(데모)</div>
+    <div class="chat-body" id="chatBody"></div>
+    <div class="chat-input">
+      <input id="chatInput" placeholder="메시지 입력..." onkeypress="if(event.key==='Enter')sendChat()"/>
+      <button onclick="sendChat()">전송</button>
+    </div>
+  </div>
+
+  <div class="notice" id="notice"></div>
+
+  <!-- Firebase SDKs (v10) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+    import { 
+      getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut 
+    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+    import {
+      getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot,
+      doc, setDoc, getDoc, updateDoc, increment, runTransaction
+    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+    import {
+      getStorage, ref, uploadBytes, getDownloadURL
+    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-storage.js";
+
+    // === 너가 준 firebaseConfig 그대로 적용 ===
+    const firebaseConfig = {
+      apiKey: "AIzaSyBJZle3txhhthWgaIWTTHzrLl4bkJqQye4",
+      authDomain: "fast-gateway-290809.firebaseapp.com",
+      projectId: "fast-gateway-290809",
+      storageBucket: "fast-gateway-290809.firebasestorage.app",
+      messagingSenderId: "640433110514",
+      appId: "1:640433110514:web:8fe4fafc9a987b6a4b3f6b",
+      measurementId: "G-2V57XWX7CW"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
+
+    // ======== UI Helpers ========
+    const $ = sel => document.querySelector(sel);
+    const $$ = sel => document.querySelectorAll(sel);
+    function toast(msg){
+      const n=$("#notice");
+      n.textContent=msg; n.style.display="block";
+      clearTimeout(window._toastT); window._toastT=setTimeout(()=>n.style.display="none",2200);
+    }
+    function now(){ return new Date().toLocaleString(); }
+    function toggleTheme(){ const b=document.body; b.dataset.theme = b.dataset.theme==="dark"?"light":"dark"; }
+    window.toggleTheme = toggleTheme;
+
+    // ======== Router ========
+    const router = {
+      show(page){
+        const feed=$("#pageFeed"), prof=$("#pageProfile");
+        if(page==='profile'){ feed.style.display="none"; prof.style.display="grid"; renderProfile(); }
+        else { feed.style.display="grid"; prof.style.display="none"; }
+      }
+    };
+    window.router = router;
+
+    // ======== Modals ========
+    function openModal(name){
+      closeModal();
+      if(name==='login') $("#loginModal").style.display="flex";
+      if(name==='signup') $("#signupModal").style.display="flex";
+      if(name==='comment') $("#commentModal").style.display="flex";
+    }
+    function closeModal(){ $$(".modal").forEach(m=>m.style.display="none"); }
+    window.openModal=openModal; window.closeModal=closeModal;
+
+    // ======== Auth ========
+    async function signup(){
+      const email=$("#suEmail").value.trim();
+      const pw=$("#suPw").value.trim();
+      const nick=$("#suNick").value.trim();
+      if(!email||!pw||!nick) return alert("이메일/비밀번호/닉네임을 모두 입력하세요.");
+      const cred = await createUserWithEmailAndPassword(auth, email, pw);
+      await setDoc(doc(db, "users", cred.user.uid), {
+        email, nickname:nick, level:1, exp:0,
+        postsCount:0, commentsCount:0, likesGiven:0, badges:[],
+        photoURL: "", // 프로필 이미지 URL
+        createdAt: serverTimestamp()
+      });
+      toast("회원가입 완료! 로그인 상태입니다.");
+      closeModal();
+    }
+    async function login(){
+      const email=$("#loginEmail").value.trim();
+      const pw=$("#loginPw").value.trim();
+      await signInWithEmailAndPassword(auth, email, pw);
+      toast("로그인 성공!");
+      closeModal();
+    }
+    async function logout(){
+      await signOut(auth);
+      toast("로그아웃 되었습니다.");
+    }
+    window.signup=signup; window.login=login; window.logout=logout;
+
+    // 로그인 상태 변경 감지
+    onAuthStateChanged(auth, async (user)=>{
+      if(user){
+        $("#authArea").style.display="none";
+        $("#userArea").style.display="flex";
+        const uref = doc(db, "users", user.uid);
+        let us = await getDoc(uref);
+        if(!us.exists()){
+          await setDoc(uref, { email:user.email||"", nickname:"사용자", level:1, exp:0,
+            postsCount:0, commentsCount:0, likesGiven:0, badges:[], photoURL:"", createdAt: serverTimestamp() });
+          us = await getDoc(uref);
+        }
+        const data = us.data();
+        $("#chipNick").textContent = data.nickname || "사용자";
+        $("#chipLv").textContent = data.level || 1;
+        setAvatarChip(data.photoURL);
+        renderProfile();
+        listenMyPosts();
+      }else{
+        $("#authArea").style.display="flex";
+        $("#userArea").style.display="none";
+        $("#myPosts").innerHTML="";
+      }
+    });
+
+    // ======== XP / Level / Badges ========
+    const XP_PER = { post:20, comment:8, like:2 };
+    const LV_STEP = 100;
+
+    async function addXp(uid, delta, counters={}){
+      const uref = doc(db, "users", uid);
+      await runTransaction(db, async (tx)=>{
+        const snap = await tx.get(uref);
+        if(!snap.exists()) return;
+        const u = snap.data();
+        const postsCount = (u.postsCount||0) + (counters.postsCount||0);
+        const commentsCount = (u.commentsCount||0) + (counters.commentsCount||0);
+        const likesGiven = (u.likesGiven||0) + (counters.likesGiven||0);
+
+        let exp = (u.exp||0) + delta;
+        let level = u.level||1;
+        while(exp >= LV_STEP){ exp -= LV_STEP; level += 1; }
+
+        const badges = new Set(u.badges||[]);
+        if(postsCount >= 5) badges.add("✍️ 작가");
+        if(commentsCount >= 10) badges.add("💬 소통왕");
+        if(likesGiven >= 20) badges.add("❤️ 팬심");
+
+        tx.update(uref, {
+          exp, level, postsCount, commentsCount, likesGiven, badges: Array.from(badges)
+        });
+      });
+    }
+
+    // ======== Storage Helpers ========
+    async function uploadImage(file, path){
+      const storageRef = ref(storage, path);
+      await uploadBytes(storageRef, file);
+      return await getDownloadURL(storageRef);
+    }
+
+    // 미리보기: 게시글 이미지
+    $("#postImage").addEventListener("change", (e)=>{
+      const f=e.target.files?.[0];
+      const pv=$("#postImagePreview");
+      if(!f){ pv.textContent=""; return; }
+      pv.innerHTML = `선택됨: ${f.name} (${Math.round(f.size/1024)} KB)`;
+    });
+
+    // ======== Posts (실시간) ========
+    const postsDiv = $("#posts");
+    let unsubscribePosts = null;
+
+    function listenPosts(){
+      if(unsubscribePosts) unsubscribePosts();
+      const q = query(collection(db,"posts"), orderBy("createdAt","desc"));
+      unsubscribePosts = onSnapshot(q, (snap)=>{
+        postsDiv.innerHTML = "";
+        snap.forEach(docSnap=>{
+          const p = docSnap.data();
+          const id = docSnap.id;
+          postsDiv.appendChild(renderPost(id, p));
+        });
+      });
+    }
+
+    function renderPost(id, p){
+      const wrap=document.createElement("div");
+      wrap.className="post panel";
+      const dateText = p.createdAt?.toDate ? p.createdAt.toDate().toLocaleString() : "(방금)";
+      const imgHtml = p.imageUrl ? `<img class="post-image" src="${p.imageUrl}" alt="post image" loading="lazy" />` : "";
+      wrap.innerHTML = `
+        <div class="post-head">
+          <div style="width:28px;height:28px;border-radius:50%;background:#c7c7d7"></div>
+          <div><strong>${p.authorNick||"익명"}</strong> <span class="meta">· ${dateText}</span></div>
+        </div>
+        <div class="body" style="white-space:pre-wrap">${escapeHtml(p.text||"")}</div>
+        ${imgHtml}
+        <div class="actions">
+          <button class="action" onclick="likePost('${id}')">👍 좋아요</button>
+          <button class="action" onclick="openCommentsModal('${id}')">💬 댓글</button>
+          <button class="action" onclick="sharePost()">🔗 공유</button>
+        </div>
+        <div class="counts">좋아요 <span>${p.likesCount||0}</span> · 댓글 <span>${p.commentsCount||0}</span></div>
+      `;
+      return wrap;
+    }
+
+    async function addPost(){
+      const user = auth.currentUser;
+      if(!user) return alert("로그인 후 이용해주세요.");
+      const text = $("#composer").value.trim();
+      const file = $("#postImage").files?.[0] || null;
+      if(!text && !file) return alert("내용 또는 이미지를 입력/선택하세요.");
+
+      const uref = doc(db, "users", user.uid);
+      const u = (await getDoc(uref)).data();
+
+      let imageUrl = "";
+      if(file){
+        const ext = file.name.split('.').pop() || 'jpg';
+        const ts = Date.now();
+        const path = `posts/${user.uid}/${ts}.${ext}`;
+        try{
+          imageUrl = await uploadImage(file, path);
+        }catch(e){
+          console.error(e);
+          toast("이미지 업로드 실패… 텍스트만 게시합니다.");
+        }
+      }
+
+      await addDoc(collection(db,"posts"), {
+        uid: user.uid,
+        authorNick: u.nickname || "익명",
+        text: text || "",
+        imageUrl,
+        likesCount: 0,
+        likedBy: [],
+        commentsCount: 0,
+        createdAt: serverTimestamp()
+      });
+      $("#composer").value="";
+      $("#postImage").value="";
+      $("#postImagePreview").textContent="";
+      await addXp(user.uid, XP_PER.post, {postsCount:1});
+      toast("📝 게시글 등록!");
+    }
+    window.addPost = addPost;
+
+    async function likePost(postId){
+      const user = auth.currentUser;
+      if(!user) return alert("로그인 후 이용해주세요.");
+      const pref = doc(db, "posts", postId);
+      await runTransaction(db, async (tx)=>{
+        const ps = await tx.get(pref);
+        if(!ps.exists()) return;
+        const p = ps.data();
+        const likedBy = new Set(p.likedBy||[]);
+        if(likedBy.has(user.uid)){
+          likedBy.delete(user.uid);
+          tx.update(pref, { likedBy: Array.from(likedBy), likesCount: Math.max(0,(p.likesCount||0)-1) });
+        }else{
+          likedBy.add(user.uid);
+          tx.update(pref, { likedBy: Array.from(likedBy), likesCount: (p.likesCount||0)+1 });
+          await addXp(user.uid, XP_PER.like, {likesGiven:1});
+        }
+      });
+    }
+    window.likePost = likePost;
+
+    // ======== Comments (실시간) ========
+    let commentTargetPostId = null;
+    let unsubscribeComments = null;
+
+    function openCommentsModal(postId){
+      commentTargetPostId = postId;
+      $("#commentList").innerHTML = "";
+      openModal('comment');
+      listenComments(postId);
+    }
+    window.openCommentsModal = openCommentsModal;
+
+    function listenComments(postId){
+      if(unsubscribeComments) unsubscribeComments();
+      const q = query(collection(db,"posts",postId,"comments"), orderBy("createdAt","desc"));
+      unsubscribeComments = onSnapshot(q, (snap)=>{
+        const list=$("#commentList"); list.innerHTML="";
+        snap.forEach(c=>{
+          const d=c.data();
+          const dateText = d.createdAt?.toDate ? d.createdAt.toDate().toLocaleString() : "(방금)";
+          const item=document.createElement("div");
+          item.style.padding="8px 0"; item.style.borderBottom="1px solid rgba(0,0,0,.06)";
+          item.innerHTML = `<strong>${d.authorNick||"익명"}</strong> <span class="meta">· ${dateText}</span><div>${escapeHtml(d.text||"")}</div>`;
+          list.appendChild(item);
+        });
+      });
+    }
+
+    async function addComment(){
+      const user = auth.currentUser;
+      if(!user) return alert("로그인 후 이용해주세요.");
+      const txt = $("#commentInput").value.trim();
+      if(!txt) return;
+      const u = (await getDoc(doc(db,"users",user.uid))).data();
+      await addDoc(collection(db,"posts",commentTargetPostId,"comments"), {
+        uid: user.uid,
+        authorNick: u.nickname || "익명",
+        text: txt,
+        createdAt: serverTimestamp()
+      });
+      $("#commentInput").value="";
+      await updateDoc(doc(db,"posts",commentTargetPostId), { commentsCount: increment(1) });
+      await addXp(user.uid, XP_PER.comment, {commentsCount:1});
+      toast("💬 댓글 등록!");
+    }
+    window.addComment = addComment;
+
+    // ======== Profile ========
+    async function renderProfile(){
+      const user = auth.currentUser;
+      if(!user){
+        $("#profNick").textContent="-"; $("#profEmail").textContent="@"; $("#profLv").textContent="1";
+        $("#xpFill").style.width="0%"; $("#xpText").textContent="0/100"; $("#badges").innerHTML="";
+        $("#profAvatar").style.backgroundImage = "";
+        setAvatarChip("");
+        return;
+      }
+      const us = await getDoc(doc(db,"users",user.uid));
+      const d = us.data();
+      $("#profNick").textContent = d.nickname || "사용자";
+      $("#profEmail").textContent = user.email || "@";
+      $("#profLv").textContent = d.level || 1;
+      $("#chipLv").textContent = d.level || 1;
+      $("#chipNick").textContent = d.nickname || "사용자";
+      const pct = Math.round(((d.exp||0)/LV_STEP)*100);
+      $("#xpFill").style.width = pct+"%";
+      $("#xpText").textContent = `${d.exp||0}/${LV_STEP}`;
+      $("#badges").innerHTML = (d.badges||[]).map(b=>`<span class="badge-tile">${b}</span>`).join("") || `<span class="meta">획득한 뱃지가 없습니다.</span>`;
+      $("#profAvatar").style.backgroundImage = d.photoURL ? `url('${d.photoURL}')` : "";
+      setAvatarChip(d.photoURL || "");
+    }
+
+    function setAvatarChip(url){
+      const el = $("#chipAvatar");
+      el.style.backgroundImage = url ? `url('${url}')` : "";
+    }
+
+    async function uploadAvatar(){
+      const user = auth.currentUser;
+      if(!user) return alert("로그인 후 이용해주세요.");
+      const file = $("#avatarInput").files?.[0];
+      if(!file) return alert("업로드할 이미지를 선택하세요.");
+      try{
+        const ext = file.name.split('.').pop() || 'jpg';
+        const path = `users/${user.uid}/avatar.${ext}`;
+        const url = await uploadImage(file, path);
+        await updateDoc(doc(db,"users",user.uid), { photoURL: url });
+        $("#profAvatar").style.backgroundImage = `url('${url}')`;
+        setAvatarChip(url);
+        toast("프로필 사진이 업데이트되었습니다.");
+      }catch(e){
+        console.error(e);
+        alert("프로필 사진 업로드에 실패했습니다.");
+      }
+    }
+    window.uploadAvatar = uploadAvatar;
+
+    function listenMyPosts(){
+      const user = auth.currentUser; if(!user) return;
+      const q = query(collection(db,"posts"), orderBy("createdAt","desc"));
+      onSnapshot(q, (snap)=>{
+        const my=$("#myPosts"); my.innerHTML="";
+        snap.forEach(s=>{
+          const p=s.data();
+          if(p.uid===user.uid){
+            const dateText = p.createdAt?.toDate ? p.createdAt.toDate().toLocaleString() : "(방금)";
+            const img = p.imageUrl ? `<img class="post-image" src="${p.imageUrl}" alt="my post image" loading="lazy" />` : "";
+            const item=document.createElement("div");
+            item.className="post panel";
+            item.innerHTML = `<div class="meta">${dateText}</div><div style="white-space:pre-wrap">${escapeHtml(p.text||"")}</div>${img}`;
+            my.appendChild(item);
+          }
+        });
+      });
+    }
+
+    // ======== Misc ========
+    function sharePost(){
+      navigator.clipboard?.writeText(location.href).catch(()=>{});
+      toast("🔗 링크 복사!");
+    }
+    window.sharePost = sharePost;
+
+    function toggleChat(){ $("#chat").classList.toggle("open"); }
+    function sendChat(){
+      const input=$("#chatInput"); const msg=input.value.trim(); if(!msg) return;
+      const user = auth.currentUser;
+      const nick = $("#chipNick").textContent || "익명";
+      const b=$("#chatBody");
+      const mine=document.createElement("div");
+      mine.innerHTML=`<div><strong>${user?nick:"익명"}</strong> <span class="meta">· ${now()}</span></div><div>${escapeHtml(msg)}</div>`;
+      mine.style.margin="8px 0"; mine.style.padding="6px 8px"; mine.style.border="1px solid rgba(0,0,0,.06)"; mine.style.borderRadius="10px";
+      b.appendChild(mine); input.value=""; b.scrollTop=b.scrollHeight;
+    }
+    window.toggleChat=toggleChat; window.sendChat=sendChat;
+
+    function escapeHtml(s){ return (s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+    // ======== Init ========
+    listenPosts(); // 피드 실시간
+    router.show('feed'); // 기본 페이지
+    // ======== Admin Like Control ========
+    function setupAdminTools() {
+      onAuthStateChanged(auth, async (user) => {
+        // 관리자 계정 이메일 확인
+        if (user && user.email === "donish351@gmail.com") {
+          // 플로팅 버튼 생성
+          if (!document.getElementById("adminLikeBtn")) {
+            const btn = document.createElement("button");
+            btn.id = "adminLikeBtn";
+            btn.textContent = "★";
+            btn.style.cssText = `
+              position:fixed; right:20px; bottom:20px; z-index:100;
+              background:#ff4757; color:#fff; border:none; border-radius:50%;
+              width:50px; height:50px; font-size:20px; cursor:pointer;
+              box-shadow:0 4px 10px rgba(0,0,0,.3);
+            `;
+            btn.onclick = openAdminLikeModal;
+            document.body.appendChild(btn);
+
+            // 모달 HTML 생성
+            const modal = document.createElement("div");
+            modal.id = "adminLikeModal";
+            modal.className = "modal";
+            modal.innerHTML = `
+              <div class="panel card">
+                <h3 style="margin-top:0">좋아요 수정</h3>
+                <select id="postSelect" style="width:100%;margin-bottom:10px"></select>
+                <input id="likeInput" type="number" min="0" placeholder="좋아요 수" />
+                <div style="display:flex;gap:8px;margin-top:10px;justify-content:flex-end">
+                  <button class="btn primary" onclick="applyLikeChange()">저장</button>
+                  <button class="btn ghost" onclick="closeAdminLikeModal()">닫기</button>
+                </div>
+              </div>
+            `;
+            document.body.appendChild(modal);
+          }
+        }
+      });
+    }
+
+    function openAdminLikeModal() {
+      const modal = document.getElementById("adminLikeModal");
+      const select = document.getElementById("postSelect");
+      select.innerHTML = "";
+
+      // Firestore에서 게시글 불러오기
+      const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
+      onSnapshot(q, (snap) => {
+        select.innerHTML = "";
+        snap.forEach((docSnap) => {
+          const p = docSnap.data();
+          const option = document.createElement("option");
+          option.value = docSnap.id;
+          option.textContent = (p.text || "(이미지)") + ` — 👍 ${p.likesCount || 0}`;
+          select.appendChild(option);
+        });
+      });
+
+      modal.style.display = "flex";
+    }
+
+    function closeAdminLikeModal() {
+      document.getElementById("adminLikeModal").style.display = "none";
+    }
+
+    async function applyLikeChange() {
+      const postId = document.getElementById("postSelect").value;
+      const newLikes = parseInt(document.getElementById("likeInput").value, 10);
+      if (!postId || isNaN(newLikes)) {
+        alert("게시글과 좋아요 수를 입력하세요.");
+        return;
+      }
+      const pref = doc(db, "posts", postId);
+      await updateDoc(pref, { likesCount: newLikes });
+      toast("👍 좋아요 수정 완료!");
+      closeAdminLikeModal();
+    }
+
+    // 실행
+    setupAdminTools();
+    // 기존 코드 실행 부분
+setupAdminTools();
+
+// 👇 새로 추가
+window.openAdminLikeModal = openAdminLikeModal;
+window.closeAdminLikeModal = closeAdminLikeModal;
+window.applyLikeChange = applyLikeChange;
+  </script>
+  
+  <script type="module">
+    // === 인기글 페이지 ===
+    const pageHot = document.createElement("div");
+    pageHot.className = "layout";
+    pageHot.id = "pageHot";
+    pageHot.style.display = "none";
+    pageHot.innerHTML = `
+      <aside class="panel">
+        <ul style="list-style:none;padding:0;margin:0">
+          <li style="padding:8px 0;cursor:pointer" onclick="router.show('feed')">⬅ 피드로 돌아가기</li>
+        </ul>
+      </aside>
+      <main>
+        <div class="panel">
+          <h3 style="margin-top:0">🔥 인기글</h3>
+          <div id="hotPosts"></div>
+        </div>
+      </main>
+      <aside class="panel right"></aside>
+    `;
+    document.body.appendChild(pageHot);
+
+    // 라우터 확장
+    const _origShow = router.show;
+    router.show = function (page) {
+      _origShow(page);
+      if (page === "hot") {
+        document.getElementById("pageFeed").style.display = "none";
+        document.getElementById("pageProfile").style.display = "none";
+        pageHot.style.display = "grid";
+        listenHotPosts();
+      } else {
+        pageHot.style.display = "none";
+      }
+    };
+
+    // 인기글 불러오기 (좋아요 순)
+    let unsubscribeHot = null;
+    function listenHotPosts() {
+      if (unsubscribeHot) unsubscribeHot();
+      const q = query(
+  collection(db, "posts"),
+  orderBy("createdAt", "desc")
+);
+      unsubscribeHot = onSnapshot(q, (snap) => {
+        const hotDiv = document.getElementById("hotPosts");
+        hotDiv.innerHTML = "";
+        snap.forEach((docSnap) => {
+          const p = docSnap.data();
+          hotDiv.appendChild(renderPost(docSnap.id, p));
+        });
+      });
+    }
+
+    // 전역 연결
+    window.listenHotPosts = listenHotPosts;
+  </script>
+  <!-- === 게시글 크게 보기 팝업 (좋아요/댓글/공유 포함) === -->
+<div id="viewModal" class="modal" style="display:none;">
+  <div class="panel card" style="max-width:720px;width:92vw;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <h3 style="margin:0">게시글</h3>
+      <button class="btn ghost" id="viewCloseBtn">닫기</button>
+    </div>
+    <div id="viewHead" class="post-head" style="margin-top:8px"></div>
+    <div id="viewBody" class="body" style="white-space:pre-wrap"></div>
+    <img id="viewImage" class="post-image" style="display:none" alt="post image (large)" />
+    <div class="actions">
+      <button class="action" id="viewLikeBtn">👍 좋아요</button>
+      <button class="action" id="viewShareBtn">🔗 공유</button>
+    </div>
+    <div class="counts">좋아요 <span id="viewLikes">0</span> · 댓글 <span id="viewCommentsCount">0</span></div>
+
+    <h4 style="margin:12px 0 6px">댓글</h4>
+    <div id="viewComments" style="max-height:260px;overflow:auto;border:1px solid rgba(0,0,0,.06);border-radius:10px;padding:8px"></div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <input id="viewCommentInput" placeholder="댓글을 입력하세요 (로그인 필요)" onkeypress="if(event.key==='Enter') submitViewComment()"/>
+      <button class="btn primary" id="viewCommentBtn">등록</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  // Firebase 재사용 임포트 (기존 앱 그대로 가져오기)
+  import { getApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+  import {
+    getFirestore, doc, getDoc, updateDoc, collection, addDoc,
+    query, orderBy, onSnapshot, limit, increment, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+  import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+
+  const db = getFirestore(getApp());
+  const auth = getAuth();
+
+  // 유틸 (이 모듈 독립 사용)
+  const qs = s => document.querySelector(s);
+  const escapeHtml = s => (s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+
+  // 피드 인덱스: 화면에 보이는 카드와 실제 Firestore 문서를 연결
+  // key = authorNick|text|imageUrl
+  const indexMap = new Map(); // key -> [{id, p}, ... (최신 우선)]
+  function makeKey(p){
+    return `${p.authorNick||''}|${p.text||''}|${p.imageUrl||''}`;
+  }
+  function rebuildIndex(){
+    const qy = query(collection(db,"posts"), orderBy("createdAt","desc"), limit(200));
+    onSnapshot(qy, (snap)=>{
+      indexMap.clear();
+      snap.forEach(d=>{
+        const p=d.data();
+        const k=makeKey(p);
+        const arr=indexMap.get(k)||[];
+        arr.push({id:d.id, p});
+        indexMap.set(k, arr);
+      });
+    });
+  }
+  rebuildIndex();
+
+  // 팝업 엘리먼트
+  const modal = qs("#viewModal");
+  const viewHead = qs("#viewHead");
+  const viewBody = qs("#viewBody");
+  const viewImg  = qs("#viewImage");
+  const viewLikes = qs("#viewLikes");
+  const viewCommentsCount = qs("#viewCommentsCount");
+  const viewComments = qs("#viewComments");
+  const viewCommentInput = qs("#viewCommentInput");
+  const viewCloseBtn = qs("#viewCloseBtn");
+  const viewLikeBtn = qs("#viewLikeBtn");
+  const viewShareBtn = qs("#viewShareBtn");
+  const viewCommentBtn = qs("#viewCommentBtn");
+
+  // 상태/구독
+  let currentPostId = null;
+  let unsubPostDoc = null;
+  let unsubComments = null;
+
+  function openView(){
+    modal.style.display = "flex";
+  }
+  function closeView(){
+    modal.style.display = "none";
+    if (unsubPostDoc) { unsubPostDoc(); unsubPostDoc=null; }
+    if (unsubComments) { unsubComments(); unsubComments=null; }
+    currentPostId = null;
+    viewComments.innerHTML = "";
+  }
+  viewCloseBtn.addEventListener("click", closeView);
+  document.addEventListener("keydown", (e)=>{ if(e.key==="Escape") closeView(); });
+
+  // 피드에서 카드 클릭 → 팝업 오픈 (버튼 영역은 제외)
+  const postsRoot = document.getElementById("posts");
+  const shouldIgnore = (el) => !!(el.closest(".actions") || el.closest(".action") || el.closest("button") || el.closest("a"));
+
+  postsRoot?.addEventListener("click", (e)=>{
+    const card = e.target.closest(".post");
+    if(!card || shouldIgnore(e.target)) return;
+
+    const author = card.querySelector(".post-head strong")?.textContent?.trim() || "익명";
+    const text = card.querySelector(".body")?.textContent || "";
+    const img = card.querySelector("img.post-image")?.src || "";
+
+    const k = `${author}|${text}|${img}`;
+    const arr = indexMap.get(k);
+    if(!arr || !arr.length){ alert("게시글을 찾는 중 문제가 발생했어요."); return; }
+
+    const { id, p } = arr[0]; // 최신 글 우선
+    currentPostId = id;
+    renderView(p);
+    wireLiveUpdates(id);
+    openView();
+  });
+
+  // 보기 화면 렌더
+  function renderView(p){
+    const dateText = p.createdAt?.toDate ? p.createdAt.toDate().toLocaleString() : "(방금)";
+    viewHead.innerHTML = `
+      <div style="width:28px;height:28px;border-radius:50%;background:#c7c7d7"></div>
+      <div><strong>${escapeHtml(p.authorNick||"익명")}</strong> <span class="meta">· ${dateText}</span></div>
+    `;
+    viewBody.textContent = p.text || "";
+    if(p.imageUrl){
+      viewImg.src = p.imageUrl;
+      viewImg.style.display = "block";
+    }else{
+      viewImg.style.display = "none";
+    }
+    viewLikes.textContent = p.likesCount || 0;
+  }
+
+  // 실시간 구독 (해당 글/댓글)
+  function wireLiveUpdates(postId){
+    if (unsubPostDoc) unsubPostDoc();
+    if (unsubComments) unsubComments();
+
+    unsubPostDoc = onSnapshot(doc(db,"posts",postId),(snap)=>{
+      if(snap.exists()) renderView(snap.data());
+    });
+
+    const cq = query(collection(db,"posts",postId,"comments"), orderBy("createdAt","desc"));
+    unsubComments = onSnapshot(cq, async (snap)=>{
+      viewComments.innerHTML="";
+      let cnt = 0;
+      for (const c of snap.docs) {
+        const d = c.data(); cnt++;
+        const dateText = d.createdAt?.toDate ? d.createdAt.toDate().toLocaleString() : "(방금)";
+
+        // 🔹 댓글 작성자 프로필 가져오기
+        let photo = "";
+        if(d.uid){
+          try{
+            const usnap = await getDoc(doc(db,"users",d.uid));
+            if(usnap.exists()) photo = usnap.data().photoURL || "";
+          }catch(e){
+            console.warn("댓글 프로필 불러오기 오류", e);
+          }
+        }
+
+        // 🔹 댓글 DOM
+        const item = document.createElement("div");
+        item.style.display="flex";
+        item.style.gap="8px";
+        item.style.padding="6px 0";
+        item.style.borderBottom="1px solid rgba(0,0,0,.06)";
+
+        const avatar = document.createElement("div");
+        avatar.style.width="28px";
+        avatar.style.height="28px";
+        avatar.style.borderRadius="50%";
+        avatar.style.background="#c7c7d7";
+        avatar.style.flexShrink="0";
+        if(photo){
+          avatar.style.backgroundImage=`url(${photo})`;
+          avatar.style.backgroundSize="cover";
+          avatar.style.backgroundPosition="center";
+        }
+
+        const body = document.createElement("div");
+        body.innerHTML = `
+          <strong>${escapeHtml(d.authorNick||"익명")}</strong> 
+          <span class="meta">· ${dateText}</span>
+          <div>${escapeHtml(d.text||"")}</div>
+        `;
+
+        item.appendChild(avatar);
+        item.appendChild(body);
+        viewComments.appendChild(item);
+      }
+      viewCommentsCount.textContent = cnt;
+    });
+  }
+
+  // 좋아요(기존 전역 likePost 있으면 재사용)
+  async function likeCurrent(){
+    if(!currentPostId) return;
+    if (window.likePost) { window.likePost(currentPostId); return; }
+    // 폴백 (거의 안탈 경로)
+    const user = auth.currentUser;
+    if(!user) return alert("로그인 후 이용해주세요.");
+    const pref = doc(db,"posts",currentPostId);
+    const snap = await getDoc(pref);
+    if(!snap.exists()) return;
+    const p = snap.data();
+    const likedBy = new Set(p.likedBy||[]);
+    if(likedBy.has(user.uid)){
+      likedBy.delete(user.uid);
+      await updateDoc(pref, { likedBy:Array.from(likedBy), likesCount:Math.max(0,(p.likesCount||0)-1) });
+    }else{
+      likedBy.add(user.uid);
+      await updateDoc(pref, { likedBy:Array.from(likedBy), likesCount:(p.likesCount||0)+1 });
+    }
+  }
+  viewLikeBtn.addEventListener("click", likeCurrent);
+
+  // 공유
+  viewShareBtn.addEventListener("click", ()=>{
+    if(!currentPostId) return;
+    const url = `${location.origin}${location.pathname}#post-${currentPostId}`;
+    navigator.clipboard?.writeText(url).then(()=>alert("링크가 복사되었습니다!"));
+  });
+
+  // 댓글 등록
+  async function submitViewComment(){
+    if(!currentPostId) return;
+    const user = auth.currentUser;
+    if(!user) return alert("로그인 후 이용해주세요.");
+    const text = viewCommentInput.value.trim(); if(!text) return;
+
+    const us = await getDoc(doc(db,"users",user.uid));
+    const nick = us.exists() ? (us.data().nickname || "익명") : "익명";
+
+    await addDoc(collection(db,"posts",currentPostId,"comments"), {
+      uid: user.uid, authorNick: nick, text, createdAt: serverTimestamp()
+    });
+    // 외형 카운트도 즉시 반영
+    await updateDoc(doc(db,"posts",currentPostId), { commentsCount: increment(1) });
+    viewCommentInput.value = "";
+  }
+  window.submitViewComment = submitViewComment;
+  viewCommentBtn.addEventListener("click", submitViewComment);
+
+  // UX: 카드에 커서 모양 주기
+  const style = document.createElement("style");
+  style.textContent = `.post{cursor:pointer}`;
+  document.head.appendChild(style);
+</script>
+<!-- === [IP 1회 가입 제한 스니펫] body 닫기 직전에 추가 === -->
+<script type="module">
+  import { getApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+  import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+  import { 
+    getFirestore, doc, getDoc, setDoc, runTransaction, serverTimestamp, deleteDoc 
+  } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+
+  const db = getFirestore(getApp());
+  const auth = getAuth();
+
+  // ---------- UI: 이미 가입된 IP 안내 모달 ----------
+  function ensureIpGuardUi(){
+    if(document.getElementById("ipGuardModal")) return;
+    const m = document.createElement("div");
+    m.id = "ipGuardModal";
+    m.className = "modal";
+    m.innerHTML = `
+      <div class="panel card">
+        <h3 style="margin-top:0">가입 제한</h3>
+        <div id="ipGuardMsg" class="meta" style="line-height:1.6"></div>
+        <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+          <button class="btn primary" id="ipGuardCloseBtn">확인</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(m);
+    document.getElementById("ipGuardCloseBtn").onclick = ()=> m.style.display="none";
+  }
+  function escapeHtml(s){ return (s||"").replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+  function showIpAlreadyModal(ip, data){
+    ensureIpGuardUi();
+    const msg = document.getElementById("ipGuardMsg");
+    const uid = data?.uid || "-";
+    const email = data?.email ? escapeHtml(data.email) : "";
+    msg.innerHTML = `
+      해당 IP <strong>${escapeHtml(ip)}</strong>에서는 이미 한 번 가입한 계정이 있습니다.<br/>
+      계정 ID(UID): <code>${escapeHtml(uid)}</code>${email ? `<br/>이메일: <code>${email}</code>`:""}
+    `;
+    document.getElementById("ipGuardModal").style.display = "flex";
+  }
+
+  // ---------- 공용: IP 조회(공용 서비스 ipify 사용) ----------
+  async function getPublicIP(){
+    try{
+      const ctrl = new AbortController();
+      const t = setTimeout(()=>ctrl.abort(), 3500);
+      const r = await fetch("https://api.ipify.org?format=json", { signal: ctrl.signal });
+      clearTimeout(t);
+      if(!r.ok) throw new Error("ip fetch failed");
+      const { ip } = await r.json();
+      return ip || null;
+    }catch(e){
+      console.warn("IP 조회 실패:", e);
+      return null;
+    }
+  }
+  function ipKeyFrom(ip){
+    // Firestore 문서 키로 사용 가능하도록 정규화(IPv4/IPv6 모두 안전)
+    return (ip||"").replace(/[^a-zA-Z0-9]/g, "_");
+  }
+
+  // ---------- 원 signup 대체 (IP 1회 제한 포함) ----------
+  const _origSignup = window.signup; // 혹시 필요 시 복구용
+  window.signup = async function enhancedSignupByIP(){
+    // 기존 모달 입력값 그대로 사용
+    const email = (document.getElementById("suEmail")?.value||"").trim();
+    const pw    = (document.getElementById("suPw")?.value||"").trim();
+    const nick  = (document.getElementById("suNick")?.value||"").trim();
+    if(!email || !pw || !nick){
+      alert("이메일/비밀번호/닉네임을 모두 입력하세요.");
+      return;
+    }
+
+    // 1) IP 조회
+    const ip = await getPublicIP();
+    const ipKey = ipKeyFrom(ip);
+    const ipRef = ip ? doc(db, "ip_signups", ipKey) : null;
+
+    // 2) 기존 가입 여부 확인 + 예약(경쟁 방지)
+    if(ipRef){
+      // 이미 매핑된 계정이 있으면 즉시 차단 & 안내
+      const exist = await getDoc(ipRef);
+      if(exist.exists() && exist.data()?.uid){
+        showIpAlreadyModal(ip, exist.data());
+        return;
+      }
+      // 트랜잭션으로 "예약" 문서 선점(동시 가입 방지)
+      try{
+        await runTransaction(db, async (tx)=>{
+          const snap = await tx.get(ipRef);
+          if(snap.exists()){ // 누군가 선점했거나 이전 가입 흔적
+            throw { code:"ip-in-use", data:snap.data() };
+          }
+          tx.set(ipRef, { status:"reserved", reservedAt: serverTimestamp() });
+        });
+      }catch(err){
+        const d = err?.data || (await getDoc(ipRef)).data() || {};
+        showIpAlreadyModal(ip, d);
+        return;
+      }
+    }
+
+    // 3) 실제 회원가입 진행
+    let cred = null;
+    try{
+      cred = await createUserWithEmailAndPassword(auth, email, pw);
+      // users 컬렉션에 프로필 문서 생성 (원코드와 동일 스키마)
+      await setDoc(doc(db, "users", cred.user.uid), {
+        email, nickname:nick, level:1, exp:0,
+        postsCount:0, commentsCount:0, likesGiven:0, badges:[],
+        photoURL:"", createdAt: serverTimestamp()
+      });
+
+      // 4) IP ↔ 계정 매핑 확정 (예약 → 확정)
+      if(ipRef){
+        await setDoc(ipRef, {
+          uid: cred.user.uid,
+          email: email,
+          ip: ip || null,
+          createdAt: serverTimestamp()
+        }, { merge:true });
+      }
+
+      alert("회원가입 완료! 로그인 상태입니다.");
+      window.closeModal && window.closeModal(); // 로그인 모달 닫기
+    }catch(err){
+      console.error(err);
+      // 실패 시 예약 롤백(다음 가입 시도 가능하게)
+      if(ipRef){
+        try{ await deleteDoc(ipRef); }catch(_){}
+      }
+      alert("회원가입 실패: " + (err?.message || "알 수 없는 오류"));
+    }
+  };
+</script>
+<!-- === /IP 1회 가입 제한 스니펫 끝 === -->
+</body>
+</html>
