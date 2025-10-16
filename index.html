@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <title>Firebase 커뮤니티 — 실시간 공유</title>
+  <title>밴블리온 위성 커뮤 — 가르다라</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root{
@@ -62,7 +62,7 @@
 <body data-theme="light">
   <header>
     <div class="brand">
-      <div class="logo"></div><h1>Firebase 커뮤니티</h1>
+      <div class="logo"></div><h1>BANBLE LEON - 가르다라</h1>
     </div>
     <div class="header-right" id="authArea">
       <button class="btn ghost" onclick="openModal('login')">로그인</button>
@@ -94,7 +94,9 @@
         <h3 style="margin-top:0">글쓰기</h3>
         <textarea id="composer" placeholder="무슨 생각을 하고 계신가요? (로그인 필요)"></textarea>
         <div style="display:flex;gap:10px;margin-top:10px;align-items:center">
+          <!-- 파일 업로드(기존) 유지 + 이미지 URL 대안 추가 -->
           <input id="postImage" type="file" accept="image/*" />
+          <input id="postImageUrl" type="text" placeholder="이미지 URL로 대체하려면 여기에 붙여넣기" />
           <button class="btn primary" onclick="addPost()">등록</button>
         </div>
         <div id="postImagePreview" class="preview"></div>
@@ -134,9 +136,17 @@
           </div>
         </div>
         <div style="display:flex;gap:10px;margin-top:10px;align-items:center">
+          <!-- 기존 파일 업로드 유지 (원하면) + 이미지 URL로 대체 가능하도록 입력 추가 -->
           <input id="avatarInput" type="file" accept="image/*" />
           <button class="btn ghost" onclick="uploadAvatar()">프로필 사진 업로드</button>
         </div>
+
+        <!-- 추가: 이미지 URL로 바로 프로필 사진 설정 (업로드 실패 또는 대안용) -->
+        <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+          <input id="avatarUrl" type="text" placeholder="프로필 이미지 URL을 붙여넣기" />
+          <button class="btn primary" onclick="setAvatarFromUrl()">URL로 설정</button>
+        </div>
+
         <div style="margin-top:12px" class="xp-row">
           <strong>LV <span id="profLv">1</span></strong>
           <div class="bar"><div class="fill" id="xpFill"></div></div>
@@ -214,7 +224,7 @@
     } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
     import {
       getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot,
-      doc, setDoc, getDoc, updateDoc, increment, runTransaction
+      doc, setDoc, getDoc, updateDoc, increment, runTransaction, limit
     } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
     import {
       getStorage, ref, uploadBytes, getDownloadURL
@@ -225,11 +235,16 @@
       apiKey: "AIzaSyBJZle3txhhthWgaIWTTHzrLl4bkJqQye4",
       authDomain: "fast-gateway-290809.firebaseapp.com",
       projectId: "fast-gateway-290809",
-      storageBucket: "fast-gateway-290809.firebasestorage.app",
+      storageBucket: "fast-gateway-290809.appspot.com",
       messagingSenderId: "640433110514",
       appId: "1:640433110514:web:8fe4fafc9a987b6a4b3f6b",
       measurementId: "G-2V57XWX7CW"
     };
+
+    // ********** NOTE **********
+    // storageBucket 값을 위처럼 "<project>.appspot.com" 형태로 넣어두었습니다.
+    // 만약 콘솔에서 다른 값을 사용 중이면 원래 값으로 바꿔주세요.
+    // **************************
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
@@ -366,6 +381,14 @@
       pv.innerHTML = `선택됨: ${f.name} (${Math.round(f.size/1024)} KB)`;
     });
 
+    // 미리보기: 이미지 URL 입력시
+    $("#postImageUrl").addEventListener("input", (e)=>{
+      const val = e.target.value.trim();
+      const pv=$("#postImagePreview");
+      if(!val){ pv.textContent=""; return; }
+      pv.innerHTML = `이미지 URL 사용: ${val}`;
+    });
+
     // ======== Posts (실시간) ========
     const postsDiv = $("#posts");
     let unsubscribePosts = null;
@@ -410,21 +433,28 @@
       if(!user) return alert("로그인 후 이용해주세요.");
       const text = $("#composer").value.trim();
       const file = $("#postImage").files?.[0] || null;
-      if(!text && !file) return alert("내용 또는 이미지를 입력/선택하세요.");
+      const imageUrlInput = ($("#postImageUrl").value||"").trim();
+      if(!text && !file && !imageUrlInput) return alert("내용 또는 이미지를 입력/선택하세요.");
 
       const uref = doc(db, "users", user.uid);
-      const u = (await getDoc(uref)).data();
+      const udoc = await getDoc(uref);
+      const u = udoc.exists() ? udoc.data() : {};
 
-      let imageUrl = "";
-      if(file){
+      let finalImageUrl = "";
+
+      // 우선순위: 명시적 이미지 URL 입력 > 파일 업로드
+      if(imageUrlInput){
+        finalImageUrl = imageUrlInput;
+      } else if(file){
         const ext = file.name.split('.').pop() || 'jpg';
         const ts = Date.now();
         const path = `posts/${user.uid}/${ts}.${ext}`;
         try{
-          imageUrl = await uploadImage(file, path);
+          finalImageUrl = await uploadImage(file, path);
         }catch(e){
           console.error(e);
           toast("이미지 업로드 실패… 텍스트만 게시합니다.");
+          finalImageUrl = "";
         }
       }
 
@@ -432,7 +462,7 @@
         uid: user.uid,
         authorNick: u.nickname || "익명",
         text: text || "",
-        imageUrl,
+        imageUrl: finalImageUrl,
         likesCount: 0,
         likedBy: [],
         commentsCount: 0,
@@ -440,6 +470,7 @@
       });
       $("#composer").value="";
       $("#postImage").value="";
+      $("#postImageUrl").value="";
       $("#postImagePreview").textContent="";
       await addXp(user.uid, XP_PER.post, {postsCount:1});
       toast("📝 게시글 등록!");
@@ -548,7 +579,24 @@
       const user = auth.currentUser;
       if(!user) return alert("로그인 후 이용해주세요.");
       const file = $("#avatarInput").files?.[0];
-      if(!file) return alert("업로드할 이미지를 선택하세요.");
+      const urlInput = ($("#avatarUrl").value||"").trim();
+
+      // 우선순위: URL 입력이 있으면 그걸 사용 (업로드 대안)
+      if(urlInput){
+        try{
+          await updateDoc(doc(db,"users",user.uid), { photoURL: urlInput });
+          $("#profAvatar").style.backgroundImage = `url('${urlInput}')`;
+          setAvatarChip(urlInput);
+          toast("프로필 사진이 URL로 업데이트되었습니다.");
+          return;
+        }catch(e){
+          console.error(e);
+          alert("프로필 URL 저장 실패");
+          return;
+        }
+      }
+
+      if(!file) return alert("업로드할 이미지를 선택하세요. 또는 URL을 입력하세요.");
       try{
         const ext = file.name.split('.').pop() || 'jpg';
         const path = `users/${user.uid}/avatar.${ext}`;
@@ -559,10 +607,28 @@
         toast("프로필 사진이 업데이트되었습니다.");
       }catch(e){
         console.error(e);
-        alert("프로필 사진 업로드에 실패했습니다.");
+        alert("프로필 사진 업로드에 실패했습니다. URL을 이용해 설정해보세요.");
       }
     }
     window.uploadAvatar = uploadAvatar;
+
+    // 추가: URL로 프로필 사진 설정 함수 (버튼용)
+    async function setAvatarFromUrl(){
+      const user = auth.currentUser;
+      if(!user) return alert("로그인 후 이용해주세요.");
+      const url = ($("#avatarUrl").value||"").trim();
+      if(!url) return alert("URL을 입력하세요.");
+      try{
+        await updateDoc(doc(db,"users",user.uid), { photoURL: url });
+        $("#profAvatar").style.backgroundImage = `url('${url}')`;
+        setAvatarChip(url);
+        toast("프로필 사진이 URL로 설정되었습니다.");
+      }catch(e){
+        console.error(e);
+        alert("프로필 URL 저장 실패");
+      }
+    }
+    window.setAvatarFromUrl = setAvatarFromUrl;
 
     function listenMyPosts(){
       const user = auth.currentUser; if(!user) return;
@@ -733,14 +799,17 @@ window.applyLikeChange = applyLikeChange;
       }
     };
 
-    // 인기글 불러오기 (좋아요 순)
+    // 인기글 불러오기 (좋아요 수 순으로 정렬)
+    // ---> 변경: likesCount 내림차순, 동률일 경우 createdAt 내림차순
     let unsubscribeHot = null;
     function listenHotPosts() {
       if (unsubscribeHot) unsubscribeHot();
+      // Firestore는 복합 정렬 시 인덱스가 필요할 수 있습니다. 콘솔에서 인덱스 에러가 나오면 지시에 따라 인덱스 생성하세요.
       const q = query(
-  collection(db, "posts"),
-  orderBy("createdAt", "desc")
-);
+        collection(db, "posts"),
+        orderBy("likesCount", "desc"),
+        orderBy("createdAt", "desc")
+      );
       unsubscribeHot = onSnapshot(q, (snap) => {
         const hotDiv = document.getElementById("hotPosts");
         hotDiv.innerHTML = "";
@@ -898,25 +967,45 @@ window.applyLikeChange = applyLikeChange;
     });
 
     const cq = query(collection(db,"posts",postId,"comments"), orderBy("createdAt","desc"));
+    // *** 변경점: 댓글 로드가 '딱딱'하게 나타나는 문제 해결
+    // 기존 코드에서는 for-await-await 형태로 각 댓글 작성자 프로필을 순차적으로 가져와서
+    // 댓글들이 몇초 간격으로 하나씩 렌더되었음.
+    // 해결: 댓글 목록에서 필요한 작성자 uid들을 한 번에 수집한 뒤
+    // getDoc를 병렬(Promise.all)로 실행하여 프로필을 미리 받아놓고,
+    // 그 다음에 댓글들을 즉시 렌더한다.
     unsubComments = onSnapshot(cq, async (snap)=>{
       viewComments.innerHTML="";
-      let cnt = 0;
+      // 1) 수량
+      const cnt = snap.docs.length;
+      // 2) 고유 uid 수집
+      const uidSet = new Set();
       for (const c of snap.docs) {
-        const d = c.data(); cnt++;
-        const dateText = d.createdAt?.toDate ? d.createdAt.toDate().toLocaleString() : "(방금)";
-
-        // 🔹 댓글 작성자 프로필 가져오기
-        let photo = "";
-        if(d.uid){
-          try{
-            const usnap = await getDoc(doc(db,"users",d.uid));
-            if(usnap.exists()) photo = usnap.data().photoURL || "";
-          }catch(e){
-            console.warn("댓글 프로필 불러오기 오류", e);
-          }
+        const d = c.data();
+        if (d.uid) uidSet.add(d.uid);
+      }
+      const uids = Array.from(uidSet);
+      // 3) 병렬로 사용자 문서 가져오기
+      const userMap = {}; // uid -> profile data
+      if (uids.length > 0) {
+        try{
+          await Promise.all(uids.map(async (uid) => {
+            try{
+              const udoc = await getDoc(doc(db,"users",uid));
+              if (udoc.exists()) userMap[uid] = udoc.data();
+            }catch(e){
+              console.warn("user fetch err", uid, e);
+            }
+          }));
+        }catch(e){
+          console.warn("parallel user fetch failed", e);
         }
-
-        // 🔹 댓글 DOM
+      }
+      // 4) 전체 댓글을 순회하면서 즉시 렌더 (프로필은 userMap에서 동기적으로 읽음)
+      for (const c of snap.docs) {
+        const d = c.data();
+        const dateText = d.createdAt?.toDate ? d.createdAt.toDate().toLocaleString() : "(방금)";
+        const photo = (d.uid && userMap[d.uid]) ? (userMap[d.uid].photoURL || "") : "";
+        // DOM 생성 (한 번에 붙임)
         const item = document.createElement("div");
         item.style.display="flex";
         item.style.gap="8px";
